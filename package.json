@@ -1,0 +1,45 @@
+{
+  "name": "lockitron-plugin",
+  "version": "0.0.1",
+  "description": "Netbeast plugin to control Lockitron remote lockers",
+  "main": "index.js",
+  "logo": "logo.png",
+  "netbeast": {
+    "bootOnLoad": true,
+    "type": "plugin",
+    "settings": true
+  },
+  "dependencies": {
+    "bluebird": "^3.4.0",
+    "body-parser": "^1.14.0",
+    "commander": "^2.8.1",
+    "express": "^4.13.3",
+    "morgan": "^1.6.1",
+    "netbeast": "^1.0.2",
+    "superagent": "^1.8.3",
+    "superagent-bluebird-promise": "^3.0.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "node test.js",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/netbeast/lockitron-plugin"
+  },
+  "keywords": [
+    "iot",
+    "netbeast",
+    "plugin",
+    "lockitron",
+    "lock"
+  ],
+  "url": "https://github.com/netbeast/lockitron-plugin",
+  "license": "GPL 3",
+  "author": "pablo@netbeast.co",
+  "bugs": {
+    "url": "https://github.com/netbeast/lockitron-plugin/issues"
+  },
+  "homepage": "https://github.com/netbeast/lockitron-plugin"
+}
