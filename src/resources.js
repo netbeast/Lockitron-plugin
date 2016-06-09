@@ -6,11 +6,14 @@ var async = require('async'),
 const API = 'http://' + process.env.NETBEAST + '/api/resources'
 
 var devices = []
+var access_token
 
 module.exports = function (callback) {
   fs.readJson('./src/settings/config.json', function (err, packageObj) {
     if (err) console.trace(err)
     if (!packageObj.access_token) return (new Error('Settings required, go to the plugin settings and enter the data required'))
+
+    access_token = packageObj.access_token
 
     request.get({
       url: 'https://api.lockitron.com/v2/locks/',
@@ -20,15 +23,15 @@ module.exports = function (callback) {
       else {
         var result = JSON.parse(body)
         var hooks = []
-        async.forEachOf(result, function (value, callback) {
+        async.forEachOf(result, function (value, key, callback) {
           hooks.push(value.id)
           callback()
-        }, function () {
+        }, function (err) {
+          callback(new Error(err))
           netbeast('locker').updateDB({ app: 'lockitron', hook: hooks })
         })
       }
     })
   })
-
-  return callback(null, devices, api)
+  return callback(null, access_token)
 }

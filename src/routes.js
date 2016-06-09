@@ -1,87 +1,106 @@
-
 var express = require('express')
 var router = express.Router()
 var netbeast = require('netbeast')
 // Require the discovery function
 var loadResources = require('./resources')
 
-loadResources(function (err, devices, api) {
+var access_token = []
+
+loadResources(function (err, token) {
   if (err) {
     console.trace(new Error(err))
     netbeast().error(err, 'Something wrong!')
   }
 
-  router.get('/welcome/:id', function (req, res, next) {
-    api.getHomeData(function (err, data) {
-      if (err) console.trace(err)
-      devices = data.home[0].cameras
-    })
+  access_token = token
 
-    var device = devices.filter(function (elem) {
-      if (elem.id === req.params.id) return true
-    })
+  router.get('/:id', function (req, res, next) {
 
-    if (device.lenght < 1) return res.status(404).send('Device not found')
-
-    if (!Object.keys(req.query).length) {
-      return res.json(device)
-    }
-    var response = {}
-    Object.keys(req.query).forEach(function (key) {
-      switch (key) {
-        case 'track':
-          if (!req.query[key]) response[key] = 'Wrong format, track: [live] or [video_id]'
-          else {
-            if (req.query[key] === 'live') {
-              if (device.is_local) response.track = device.vpn_url + '/live/index_local.m3u8'
-              else response.track = device.vpn_url + '/live/index.m3u8'
-            } else {
-              if (device.is_local) response.track = device.vpn_url + '/vod/' + req.query.track + '/index_local.m3u8'
-              else response.track = device.vpn_url + '/vod/' + req.query.track + '/index.m3u8'
-            }
-          }
-          break
-        case 'picture':
-          if (!('key' in req.query)) response[key] = 'Missing property key ({ picture: "", key: ""})'
-          else if (!req.query[key]) response[key] = 'Wrong format, picture: [picture_id]'
-          else {
-            api.getCameraPicture({image_id: req.query.picture, key: req.query.key}, function (err, data) {
-              if (err) console.trace(err)
-              response.picture = data
+      var response = {}
+      async.forEachOf(req.query, function (value, key, callback) {
+        switch (key) {
+          case 'locks':
+          case 'keys':
+          case 'activity':
+            var url = (key === 'locks') ? '' : (key === 'keys' ? '/keys' : '/activity')
+            request.get({
+              url: 'https://api.lockitron.com/v2/locks/' + req.params.id + url,
+              qs: {access_token: access_token}
+            }, function (err, response, body) {
+              if (err) callback(new Error(err))
+              else {
+                response[key] = JSON.parse(body)
+                callback()
+              }
             })
-          }
           break
-        case 'users':
-          api.getUser(function (err, users) {
-            if (err) console.trace(err)
-            response.users = users
+          case 'users':
+          request.get({
+            url: 'https://api.lockitron.com/v2/users/me',
+            qs: {access_token: access_token}
+          }, function (err, response, body) {
+            if (err) callback(new Error(err))
+            else {
+              response[key] = JSON.parse(body)
+              callback()
+            }
           })
           break
-        case 'persons':
-        case 'events':
-          api.getHomeData(function (err, data) {
-            if (err) console.trace(err)
-            response[key] = data.homes[0][key]
-          })
+          default:
+          callback()
           break
-      }
+        }
+      }, function (err) {
+        if (err) console.trace(err)
+        if (Object.keys(response).length) return res.json(response)
+        return res.status(400).send('Values not available on Netatmo Welcome')
+      })
     })
-    if (Object.keys(response).length) return res.json(response)
-    return res.status(400).send('Values not available on Netatmo Welcome')
   })
 
   router.get('/discover', function (req, res, next) {
-    loadResources(function (err, devices, api) {
+    loadResources(function (err, access_token) {
       if (err) {
         console.trace(new Error(err))
         netbeast().error(err, 'Something wrong!')
       }
+      access_token = token
     })
   })
 
-  router.post('*', function (req, res, next) {
-    if (err) return res.status(500).send(err)
-    return res.status(501).send('Post Not Implemented')
+  router.post('/:id', function (req, res, next) {
+    var validate = []
+    if (req.body.access_token) {
+      if (req.body.state || req.body.noblock || req.body.sleep_period) {
+        validate = ['access_token', 'state', 'noblock', 'sleep_period']
+        Object.keys(req.body).forEach(function (key) {
+          if (validate.indexOf(key) < 0) delete req.body[key]
+        })
+        console.log(req.body)
+        request.put({
+          url: 'https://api.lockitron.com/v2/locks/' + req.params.id,
+          json: req.body
+        }, function (err, response, body) {
+          if (err) res.status(404).send({ error: 'Value not available' })
+          else res.send(true)
+        })
+      } else if ((req.body.email || req.body.phone) && req.body.name && req.body.start_date && req.body.expiration_date && req.body.role) {
+        validate = ['access_token', 'email', 'phone', 'name', 'start_date', 'expiration_date', 'role']
+        if (Object.keys(req.body).length > 6) {
+          Object.keys(req.body).forEach(function (key) {
+            if (validate.indexOf(key) < 0) delete req.body[key]
+          })
+        }
+        console.log(req.body)
+        request.put({
+          url: 'https://api.lockitron.com/v2/locks/' + req.params.id + '/keys',
+          json: req.body
+        }, function (err, response, body) {
+          if (err) res.status(404).send({ error: 'Value not available' })
+          else res.send(true)
+        })
+      }
+    } else res.status(404).send({ error: 'Access token missing' })
   })
 })
 
