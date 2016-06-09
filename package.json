@@ -10,12 +10,15 @@
     "settings": true
   },
   "dependencies": {
+    "async": "^2.0.0-rc.6",
     "bluebird": "^3.4.0",
     "body-parser": "^1.14.0",
     "commander": "^2.8.1",
     "express": "^4.13.3",
+    "fs-extra": "^0.30.0",
     "morgan": "^1.6.1",
     "netbeast": "^1.0.2",
+    "request": "^2.72.0",
     "superagent": "^1.8.3",
     "superagent-bluebird-promise": "^3.0.0"
   },
